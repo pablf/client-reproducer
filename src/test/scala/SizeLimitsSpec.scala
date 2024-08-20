@@ -19,7 +19,7 @@ import zio.http.netty.NettyConfig
     - limits on url length, header length and body size are configurable
     - default limits are safe (they are Netty's default)
  */
-object SizeLimitsSpec extends ZIOHttpSpec {
+object SizeLimitsSpec extends ZIOSpecDefault {
 
   val routes = Routes(
     Method.GET / PathCodec.trailing  -> Handler.ok,
