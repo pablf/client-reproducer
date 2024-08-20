@@ -1,4 +1,3 @@
-scalaVersion := "3.3.3"
 
 testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 libraryDependencies ++= Seq(
@@ -7,4 +6,4 @@ libraryDependencies ++= Seq(
         "dev.zio" %% "zio-test-sbt" % "2.1.7" % "test",
         "dev.zio" %% "zio" % "2.1.7",
     )
-//2.12.19, 2.13.14, 
+
