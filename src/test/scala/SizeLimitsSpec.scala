@@ -63,7 +63,7 @@ object SizeLimitsSpec extends ZIOSpecDefault {
           if (expected == status) loop(size + 1, lstTestSize, inc(size)(content), f, expected)
           else if (size >= lstTestSize - 2) // adding margin for differences in scala 2 and scala 3
             ZIO.succeed(((size, expected), Some(content)))
-          else loop(size + 1, lstTestSize, inc(size)(content), f, expected) *> ZIO.succeed(((size, status), None))
+          else loop(size + 1, lstTestSize, inc(size)(content), f, expected) *> ZIO.succeed(((-1, status), None))
       } yield info
 
     def mkSomeRequest(port: Int): ZIO[Client, Throwable, Boolean] = for {
