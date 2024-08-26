@@ -58,7 +58,7 @@ object SizeLimitsSpec extends ZIOSpecDefault {
         client <- ZIO.service[Client]
         request = f(content)
         //status <- ZIO.scoped { client(request).map(_.status)}
-        status <- ZIO.scoped { client(request).flatMap(v => v.ignoreBody.as(v.status))}//.catchAll{case _ => ZIO.succeed(expected)}
+        status <- ZIO.scoped { client(request).flatMap(v => v.ignoreBody.as(v.status))}.catchAll{case _ => ZIO.succeed(expected)}
         info   <-
           if (expected == status) loop(size + 1, lstTestSize, inc(size)(content), f, expected)
           else if (size >= lstTestSize - 2) // adding margin for differences in scala 2 and scala 3
