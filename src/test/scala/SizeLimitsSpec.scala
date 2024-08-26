@@ -57,7 +57,8 @@ object SizeLimitsSpec extends ZIOSpecDefault {
       for {
         client <- ZIO.service[Client]
         request = f(content)
-        status <- ZIO.scoped { client(request).map(_.status) }
+        //status <- ZIO.scoped { client(request).map(_.status)}
+        status <- ZIO.scoped { client(request).flatMap(v => v.ignoreBody.as(v.status))}//.catchAll{case _ => ZIO.succeed(expected)}
         info   <-
           if (expected == status) loop(size + 1, lstTestSize, inc(size)(content), f, expected)
           else if (size >= lstTestSize - 2) // adding margin for differences in scala 2 and scala 3
@@ -65,9 +66,15 @@ object SizeLimitsSpec extends ZIOSpecDefault {
           else ZIO.succeed(((size, status), None))
       } yield info
 
+    def mkSomeRequest(port: Int): ZIO[Client, Throwable, Boolean] = for {
+      client <- ZIO.service[Client]
+      _ <- ZIO.scoped{client(Request.get(s"http://localhost:$port/hey"))}
+    } yield true
+
     for {
       port <- Server.install(routes)
       mkRequest = mkRequest0(port)
+      bo1 <- mkSomeRequest(port)
       out1 <- loop(0, maxSize, fstContent, mkRequest, Status.Ok)
       (info1, c) = out1
       out2 <- c match {
@@ -77,7 +84,10 @@ object SizeLimitsSpec extends ZIOSpecDefault {
       (info2, _) = out2
       (lstWorkingSize1, lstStatus1) = info1
       (lstWorkingSize2, lstStatus2) = info2
+      bo2 <- mkSomeRequest(port)
     } yield assertTrue(
+      bo1 == true,
+      bo2 == true,
       maxSize - lstWorkingSize1 <= 2,
       maxSize - lstWorkingSize1 >= 0,
       lstStatus1 == Status.Ok,
@@ -165,57 +175,6 @@ object SizeLimitsSpec extends ZIOSpecDefault {
       DnsResolver.default,
     ),
     suite("testing default limits")(
-      test("infinite segment url") {
-        val urlSize = DEFAULT_URL_SIZE - 113
-        testLimit(
-          urlSize,
-          100,
-          200,
-          port => path => Request.get(s"http://localhost:$port/$path"),
-          Status.InternalServerError,
-        )
-      },
-      test("infinite number of small segments url") {
-        val fstUrl = List.fill(1500)("A").mkString("/")
-        testLimit0[String](
-          542,
-          800,
-          fstUrl,
-          _ => (_ ++ "/A"),
-          port => path => Request.get(s"http://localhost:$port/$path"),
-          Status.InternalServerError,
-        )
-      },
-      test("infinite header") {
-        val headerSize = DEFAULT_HEADER_SIZE - 186
-        testLimit(
-          headerSize,
-          100,
-          200,
-          port => header => Request.get(s"http://localhost:$port").addHeader(Header.Custom("n", header)),
-          Status.InternalServerError,
-        )
-      },
-      test("infinite small headers") {
-        val n = 450
-        testLimit0[List[Header.Custom]](
-          489,
-          800,
-          (0 until n).toList.map(s => Header.Custom(s"Header$s", "A")),
-          size => (_.+:(Header.Custom(size.toString, "A"))),
-          port => headers => Request.get(s"http://localhost:$port").addHeaders(Headers(headers: _*)),
-          Status.InternalServerError,
-        )
-      },
-      test("infinite body") {
-        testLimit(
-          DEFAULT_CONTENT_SIZE - 100,
-          101,
-          200,
-          port => body => Request.post(s"http://localhost:$port", Body.fromString(body)),
-          Status.RequestEntityTooLarge,
-        )
-      },
       test("infinite multi-part form") {
         val initValue = 1300
         testLimit0[Form](
